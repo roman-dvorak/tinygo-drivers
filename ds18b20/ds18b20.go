@@ -1,6 +1,6 @@
 // Package ds18b20 provides a driver for the DALLAS one-wire temperature sensor
 //
-// Datasheet:
+// Datasheet: https://datasheets.maximintegrated.com/en/ds/DS18B20.pdf
 //
 
 package ds18b20 // import "tinygo.org/x/drivers/ds18b20"
@@ -30,7 +30,7 @@ func (d *Device) SkipRom() {
   d.WriteByte(0xcc)
 }
 
-func (d *Device) ReadScratchpad() {
+func (d *Device) ReadScratchpad() (int) {
   // 0xBE
   d.WriteByte(0xBE)
   var data [9]byte
@@ -39,15 +39,21 @@ func (d *Device) ReadScratchpad() {
     data[i] = d.ReadByte()
   }
 
-  println(int(data[0]), int(data[1]))
+  //println(int(data[0]), int(data[1]))
   var temp int16
+  //var ftemp float64
+
   temp |= int16(data[0])
   temp |= (int16(data[1])&0x0f) << 8
-  // if (int(data[1])&0xf0 > 0){
+  // TODO negative values handeling
+  if (int(data[1])&0xf0 > 0){
   //   temp *= -1;
-  // }
-  println("RAWTEMP", temp, float32(temp)/16.0)
+    temp = temp/16-256
+  } else {
+    temp = temp/16
+  }
 
+  return (int(temp))
 }
 
 func b2i(b bool) uint8 {
@@ -75,13 +81,11 @@ func (d *Device) WriteByte(data byte) {
 func (d *Device) WriteBit(bit bool){
   d.pin.Configure(machine.PinConfig{Mode: machine.PinOutput})
   if(bit){
-    //Write bit ‘1’
     d.pin.Set(false)
     time.Sleep(time.Microsecond * 5);
     d.pin.Set(true)
     time.Sleep(time.Microsecond * 60);
     } else {
-    //Write bit ‘0’
     d.pin.Set(false)
     time.Sleep(time.Microsecond * 70);
     d.pin.Set(true)
@@ -102,7 +106,7 @@ func (d *Device) ReadBit() (bit bool){
 }
 
 func (d *Device) Reset() (err error) {
-  println("RESET")
+  //println("RESET")
   d.pin.Configure(machine.PinConfig{Mode: machine.PinOutput})
   d.pin.Set(false)
 	time.Sleep(time.Microsecond * 1000)
@@ -117,9 +121,9 @@ func (d *Device) Reset() (err error) {
   }
 	time.Sleep(time.Microsecond * 5)
   for true {
-    println("RESPONSE", d.pin.Get())
+    //println("RESPONSE", d.pin.Get())
     if(d.pin.Get() == false){
-      println("RESPONSE", d.pin.Get())
+      //println("RESPONSE", d.pin.Get())
       break
     }
   }
@@ -127,7 +131,7 @@ func (d *Device) Reset() (err error) {
   for true {
     //println("RESPONSE", d.pin.Get())
     if(d.pin.Get() == true){
-      println("DONE", d.pin.Get())
+      //println("DONE", d.pin.Get())
       break
     }
   }
