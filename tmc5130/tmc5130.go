@@ -57,9 +57,6 @@ func (d *Device) GetRegister(addr byte) []byte {
   time.Sleep(time.Microsecond * 1)
 	d.cs.Low(); d.bus.Tx(a, c); d.cs.High()
 	d.Spi_status_d.decode(c[0])
-	//d.Spi_status_d.decode(c[0])
-  //str1 := fmt.Sprintf("(%v), (%v)", b, c)
-  //println("steCompare", str1)
 
 	return c
 }
