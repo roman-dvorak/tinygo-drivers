@@ -6,25 +6,28 @@
 package tmc5130 // import "tinygo.org/x/drivers/tmc5130"
 
 import (
-	_"errors"
+	_ "errors"
 	//"fmt"
 	"machine"
 	"time"
 	"tinygo.org/x/drivers"
 )
 
-func constrain (val int, min int, max int) int {
-	if(val < min){return min}
-	if(val > max){return max}
+func constrain(val int, min int, max int) int {
+	if val < min {
+		return min
+	}
+	if val > max {
+		return max
+	}
 	return val
 }
 
-
 type Device struct {
-	bus drivers.SPI
-	cs  machine.Pin
-	tx  []byte
-	rx  []byte
+	bus          drivers.SPI
+	cs           machine.Pin
+	tx           []byte
+	rx           []byte
 	Spi_status_d SPI_STATUS
 }
 
@@ -34,28 +37,31 @@ const (
 
 func New(b drivers.SPI, csPin machine.Pin) *Device {
 	d := &Device{
-			bus: b,
-			tx:  make([]byte, 0, bufferSize),
-			rx:  make([]byte, 0, bufferSize),
-			cs:  csPin,
+		bus: b,
+		tx:  make([]byte, 0, bufferSize),
+		rx:  make([]byte, 0, bufferSize),
+		cs:  csPin,
 	}
 
 	return d
 }
-
 
 func (d *Device) Configure() {
 	d.cs.Configure(machine.PinConfig{Mode: machine.PinOutput})
 }
 
 func (d *Device) GetRegister(addr byte) []byte {
-  a := []byte{addr, 0, 0, 0, 0}
-  b := []byte{0, 0, 0, 0, 0}
-  c := []byte{0, 0, 0, 0, 0}
+	a := []byte{addr, 0, 0, 0, 0}
+	b := []byte{0, 0, 0, 0, 0}
+	c := []byte{0, 0, 0, 0, 0}
 
-	d.cs.Low(); d.bus.Tx(a, b); d.cs.High()
-  time.Sleep(time.Microsecond * 1)
-	d.cs.Low(); d.bus.Tx(a, c); d.cs.High()
+	d.cs.Low()
+	d.bus.Tx(a, b)
+	d.cs.High()
+	time.Sleep(time.Microsecond * 1)
+	d.cs.Low()
+	d.bus.Tx(a, c)
+	d.cs.High()
 	d.Spi_status_d.decode(c[0])
 
 	return c
@@ -65,17 +71,16 @@ func (d *Device) GetSPIstatus() SPI_STATUS {
 	return d.Spi_status_d
 }
 
+func (d *Device) SetRegister(addr byte, data int) []byte {
 
-func (d *Device) SetRegister(addr byte, data int) ([]byte) {
-
-  a := []byte{addr, byte(data>>24)&0xff, byte(data>>16)&0xff, byte(data>>8)&0xff, byte(data>>0)&0xff}
-  b := []byte{0, 0, 0, 0, 0}
+	a := []byte{addr, byte(data>>24) & 0xff, byte(data>>16) & 0xff, byte(data>>8) & 0xff, byte(data>>0) & 0xff}
+	b := []byte{0, 0, 0, 0, 0}
 	c := []byte{0, 0, 0, 0, 0}
 
 	d.cs.Low()
 	d.bus.Tx(a, b)
 	d.cs.High()
-  time.Sleep(time.Millisecond * 1)
+	time.Sleep(time.Millisecond * 1)
 	d.cs.Low()
 	d.bus.Tx(a, c)
 	d.cs.High()
@@ -84,53 +89,57 @@ func (d *Device) SetRegister(addr byte, data int) ([]byte) {
 	return c
 }
 
-
-
-func (d *Device) InputStatus() (REG_INPUT) {
-		reg := d.GetRegister(IOIN)
-		println(reg[0], reg[1], reg[2], reg[3])
-		var data REG_INPUT
-		data.decode(reg)
-		return data
+func (d *Device) InputStatus() REG_INPUT {
+	reg := d.GetRegister(IOIN)
+	println(reg[0], reg[1], reg[2], reg[3])
+	var data REG_INPUT
+	data.decode(reg)
+	return data
 }
 
-func (d *Device) GetXACTUAL() (REG_XACTUAL) {
-		reg := d.GetRegister(XACTUAL)
-		var data REG_XACTUAL
-		data.decode(reg)
-		return data
+func (d *Device) GetXACTUAL() REG_XACTUAL {
+	reg := d.GetRegister(XACTUAL)
+	var data REG_XACTUAL
+	data.decode(reg)
+	return data
 }
 
-func (d *Device) GetVACTUAL() (REG_VACTUAL) {
-		reg := d.GetRegister(VACTUAL)
-		var data REG_VACTUAL
-		data.decode(reg)
-		return data
+func (d *Device) GetVACTUAL() REG_VACTUAL {
+	reg := d.GetRegister(VACTUAL)
+	var data REG_VACTUAL
+	data.decode(reg)
+	return data
 }
 
-func (d *Device) SetXACTUAL(position int) (REG_XACTUAL) {
-		reg := d.SetRegister(XACTUAL|WRITE, position)
-		var data REG_XACTUAL
-		data.decode(reg)
-		return data
+func (d *Device) SetXACTUAL(position int) REG_XACTUAL {
+	reg := d.SetRegister(XACTUAL|WRITE, position)
+	var data REG_XACTUAL
+	data.decode(reg)
+	return data
 }
 
-func (d *Device) SetXTARGET(position int) (REG_XTARGET) {
-		reg := d.SetRegister(XTARGET|WRITE, position)
-		var data REG_XTARGET
-		data.decode(reg)
-		return data
+func (d *Device) SetXTARGET(position int) REG_XTARGET {
+	reg := d.SetRegister(XTARGET|WRITE, position)
+	var data REG_XTARGET
+	data.decode(reg)
+	return data
 }
 
+//
+// Set current for HOLD and RUN mode. Values are in range 0..100 in percent of maximal current.
+// Current is set by external on internal sensing rezistor. Check your wiring for obtaining
+// real current.
+//
+//   * Ihold is fraction of maximal current. IN register are stored values 0..32
+//   * IRun same as Ihold
+//   * delay - How long to stay in Ihold mode
+//
+//
 func (d *Device) SetCurrent(ihold int, irun int, delay int) {
-	ihold = constrain(ihold, 0, 31)
-	irun = constrain(irun, 0, 31)
-	delay = constrain(delay, 0, 2^18)
-	if(delay==0){
-		delay = 1
-	} else {
-		delay = delay<<1
-	}
-	d.SetRegister(IHOLD_IRUN|WRITE,(ihold &0b11111)<<0|(irun &0b11111)<<8|(delay&0b1111)<<16);
+	ihold = int(31 * float32(constrain(ihold, 0, 100)/100.0))
+	irun = int(31 * float32(constrain(irun, 0, 100)/100.0))
+	delay = int(15 * float32(constrain(delay, 0, 100)/100.0))
+
+	d.SetRegister(IHOLD_IRUN|WRITE, (ihold&0b11111)<<0|(irun&0b11111)<<8|(delay&0b1111)<<16)
 
 }
